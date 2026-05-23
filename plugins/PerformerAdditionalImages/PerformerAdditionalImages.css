@@ -1,0 +1,74 @@
+#performer-page .detail-header:not(.edit) .performer-additional-images {
+  display: flex;
+  float: left;
+  height: auto;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+#performer-page
+  .detail-header:not(.edit)
+  .performer-additional-images__image {
+  position: relative;
+}
+
+#performer-page
+  .detail-header:not(.edit)
+  .performer-additional-images__button.btn {
+  align-items: center;
+  background: rgba(24, 26, 31, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  bottom: -5px;
+  color: #fff;
+  display: flex;
+  height: 40px;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: -5px;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+  width: 40px;
+  z-index: 3;
+}
+
+#performer-page
+  .detail-header:not(.edit)
+  .performer-additional-images__button.btn:hover,
+#performer-page
+  .detail-header:not(.edit)
+  .performer-additional-images__button.btn:focus {
+  background: rgba(42, 46, 56, 0.95);
+  border-color: rgba(255, 255, 255, 0.42);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+#performer-page
+  .detail-header:not(.edit)
+  .performer-additional-images__button
+  svg {
+  display: block;
+  height: 24px;
+  pointer-events: none;
+  width: 24px;
+}
+
+.performer-additional-images-popover {
+  padding: 5px;
+}
+
+.performer-additional-images-popover__thumbnail {
+  max-width: 22rem;
+  object-fit: cover;
+  object-position: top;
+}
+
+.performer-head .custom-fields .detail-item.alt-image,
+.performer-head .custom-fields .detail-item[class*="alt-image-"] {
+  display: none;
+}

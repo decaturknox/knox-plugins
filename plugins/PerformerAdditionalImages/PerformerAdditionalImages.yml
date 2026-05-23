@@ -1,0 +1,9 @@
+name: "Performer Additional Images"
+description: "Adds multiple alternate performer images and displays them as a performer image carousel."
+version: "0.1.0"
+url: "https://github.com/decaturknox/knox-plugins"
+ui:
+  javascript:
+    - "PerformerAdditionalImages.js"
+  css:
+    - "PerformerAdditionalImages.css"
