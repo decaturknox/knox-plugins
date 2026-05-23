@@ -9,8 +9,29 @@
 
 #performer-page
   .detail-header:not(.edit)
-  .performer-additional-images__image {
+  .performer-additional-images__image,
+#performer-page
+  .detail-header:not(.edit)
+  .performer-additional-images__alternate {
   position: relative;
+}
+
+#performer-page
+  .detail-header:not(.edit)
+  .performer-additional-images__image:not(.active),
+#performer-page
+  .detail-header:not(.edit)
+  .performer-additional-images__alternate:not(.active) {
+  display: none;
+}
+
+#performer-page
+  .detail-header:not(.edit)
+  .performer-additional-images__alternate.active {
+  display: block;
+  max-width: 100%;
+  object-fit: cover;
+  object-position: top;
 }
 
 #performer-page

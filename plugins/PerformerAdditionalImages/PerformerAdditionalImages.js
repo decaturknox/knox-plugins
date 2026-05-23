@@ -14,7 +14,6 @@
   const fieldBase = "alt_image";
   const fieldPattern = /^alt_image(?:_(\d+))?$/;
   const pendingFieldsByPerformer = new Map();
-  const ensuredFieldsByPerformer = new Map();
 
   function isAdditionalImageField(field) {
     return fieldBase === field || fieldPattern.test(field);
@@ -216,20 +215,35 @@
     );
   }
 
-  PluginApi.patch.instead("PerformerHeaderImage", function (
-    props,
-    _context,
-    original
-  ) {
-    const usePerformerUpdate = StashService && StashService.usePerformerUpdate;
-    const [updatePerformer] = usePerformerUpdate
-      ? usePerformerUpdate()
-      : [null];
+  function renderOriginal(original, props, key) {
+    if (key === undefined) {
+      return React.createElement(original, { ...props });
+    }
+
+    return React.createElement(original, { ...props, key });
+  }
+
+  function AlternatePerformerImage({ image, performer, isActive }) {
+    const altText =
+      performer && performer.name
+        ? `${performer.name} alternate image ${image.index}`
+        : `Performer alternate image ${image.index}`;
+
+    return React.createElement("img", {
+      className: `performer performer-additional-images__alternate${
+        isActive ? " active" : ""
+      }`,
+      src: image.value,
+      alt: altText,
+      loading: "lazy",
+    });
+  }
+
+  function PatchedPerformerHeaderImage({ original, originalProps }) {
+    const props = originalProps;
     const performer = props.performer;
     const customFields = (performer && performer.custom_fields) || {};
-    const additionalImages = getAdditionalImages(
-      customFields
-    );
+    const additionalImages = getAdditionalImages(customFields);
     const [activeIndex, setActiveIndex] = React.useState(0);
     const imageCount = additionalImages.length + 1;
     const safeActiveIndex = Math.min(activeIndex, imageCount - 1);
@@ -244,58 +258,11 @@
       }
     }, [activeIndex, imageCount]);
 
-    React.useEffect(() => {
-      if (!performer || !performer.id || !updatePerformer) {
-        return;
-      }
-
-      const existingFields = getAdditionalImageFields(customFields);
-      const hasEmptyField = existingFields.some(
-        (field) => !normalizeImageValue(customFields[field])
-      );
-
-      if (hasEmptyField) {
-        return;
-      }
-
-      const nextField = getNextFieldName(existingFields);
-      const ensuredFields =
-        ensuredFieldsByPerformer.get(performer.id) || new Set();
-
-      if (ensuredFields.has(nextField)) {
-        return;
-      }
-
-      ensuredFields.add(nextField);
-      ensuredFieldsByPerformer.set(performer.id, ensuredFields);
-
-      updatePerformer({
-        variables: {
-          input: {
-            id: performer.id,
-            custom_fields: {
-              partial: {
-                [nextField]: "",
-              },
-            },
-          },
-        },
-      }).catch(() => {
-        ensuredFields.delete(nextField);
-      });
-    }, [customFields, performer, updatePerformer]);
+    const primaryImage = renderOriginal(original, props);
 
     if (!additionalImages.length) {
-      return React.createElement(React.Fragment, null, original({ ...props }));
+      return React.createElement(React.Fragment, null, primaryImage);
     }
-
-    const activeImage =
-      safeActiveIndex === 0
-        ? original({ ...props })
-        : original({
-            ...props,
-            activeImage: additionalImages[safeActiveIndex - 1].value,
-          });
 
     return React.createElement(
       "div",
@@ -306,8 +273,20 @@
       },
       React.createElement(
         "div",
-        { className: "performer-additional-images__image" },
-        activeImage
+        {
+          className: `performer-additional-images__image${
+            safeActiveIndex === 0 ? " active" : ""
+          }`,
+        },
+        primaryImage
+      ),
+      additionalImages.map((image, index) =>
+        React.createElement(AlternatePerformerImage, {
+          key: image.field,
+          image,
+          performer,
+          isActive: safeActiveIndex === index + 1,
+        })
       ),
       React.createElement(
         Button,
@@ -325,15 +304,23 @@
         React.createElement(CarouselIcon)
       )
     );
+  }
+
+  PluginApi.patch.instead("PerformerHeaderImage", function (
+    props,
+    _context,
+    original
+  ) {
+    return React.createElement(PatchedPerformerHeaderImage, {
+      original,
+      originalProps: props,
+    });
   });
 
-  PluginApi.patch.instead("ImageInput", function (props, _context, original) {
-    const usePerformerUpdate = StashService && StashService.usePerformerUpdate;
+  function PatchedImageInput({ original, originalProps, updatePerformer }) {
+    const props = originalProps;
     const performerId = getPerformerIdFromLocation();
     const isPerformerPage = Boolean(document.querySelector("#performer-page"));
-    const [updatePerformer] = usePerformerUpdate
-      ? usePerformerUpdate()
-      : [null];
 
     async function saveAdditionalImage(imageValue) {
       if (!imageValue) {
@@ -374,18 +361,22 @@
       pendingFieldsByPerformer.set(performerId, pendingFields);
     }
 
-    const primaryInput = original({ ...props });
+    const primaryInput = renderOriginal(original, props, "primary-image-input");
 
     if (!isPerformerPage) {
       return React.createElement(React.Fragment, null, primaryInput);
     }
 
-    const additionalInput = original({
-      ...props,
-      text: "Add additional performer image...",
-      onImageChange: (event) => handleImageChange(event, saveAdditionalImage),
-      onImageURL: saveAdditionalImage,
-    });
+    const additionalInput = renderOriginal(
+      original,
+      {
+        ...props,
+        text: "Add additional performer image...",
+        onImageChange: (event) => handleImageChange(event, saveAdditionalImage),
+        onImageURL: saveAdditionalImage,
+      },
+      "additional-image-input"
+    );
 
     return React.createElement(
       React.Fragment,
@@ -393,16 +384,41 @@
       primaryInput,
       additionalInput
     );
+  }
+
+  function PatchedImageInputWithUpdate({ original, originalProps }) {
+    const usePerformerUpdate = StashService && StashService.usePerformerUpdate;
+    const [updatePerformer] = usePerformerUpdate();
+
+    return React.createElement(PatchedImageInput, {
+      original,
+      originalProps,
+      updatePerformer,
+    });
+  }
+
+  PluginApi.patch.instead("ImageInput", function (props, _context, original) {
+    const usePerformerUpdate = StashService && StashService.usePerformerUpdate;
+
+    if (usePerformerUpdate) {
+      return React.createElement(PatchedImageInputWithUpdate, {
+        original,
+        originalProps: props,
+      });
+    }
+
+    return React.createElement(PatchedImageInput, {
+      original,
+      originalProps: props,
+      updatePerformer: null,
+    });
   });
 
-  PluginApi.patch.instead("CustomFieldInput", function (
-    props,
-    _context,
-    original
-  ) {
+  function PatchedCustomFieldInput({ original, originalProps }) {
+    const props = originalProps;
     const field = props.field;
     const value = normalizeImageValue(props.value);
-    const renderedInput = original({ ...props });
+    const renderedInput = renderOriginal(original, props);
 
     if (!HoverPopover || !isAdditionalImageField(field) || !value) {
       return React.createElement(React.Fragment, null, renderedInput);
@@ -428,13 +444,29 @@
       },
       renderedInput
     );
+  }
+
+  PluginApi.patch.instead("CustomFieldInput", function (
+    props,
+    _context,
+    original
+  ) {
+    return React.createElement(PatchedCustomFieldInput, {
+      original,
+      originalProps: props,
+    });
   });
 
-  PluginApi.patch.instead("CustomFields", function (props, _context, original) {
+  function PatchedCustomFields({ original, originalProps }) {
+    const props = originalProps;
     const values = props.values;
 
     if (!values || typeof values !== "object") {
-      return React.createElement(React.Fragment, null, original({ ...props }));
+      return React.createElement(
+        React.Fragment,
+        null,
+        renderOriginal(original, props)
+      );
     }
 
     const filteredValues = Object.fromEntries(
@@ -442,7 +474,11 @@
     );
 
     if (Object.keys(filteredValues).length === Object.keys(values).length) {
-      return React.createElement(React.Fragment, null, original({ ...props }));
+      return React.createElement(
+        React.Fragment,
+        null,
+        renderOriginal(original, props)
+      );
     }
 
     if (!Object.keys(filteredValues).length) {
@@ -452,7 +488,14 @@
     return React.createElement(
       React.Fragment,
       null,
-      original({ ...props, values: filteredValues })
+      renderOriginal(original, { ...props, values: filteredValues })
     );
+  }
+
+  PluginApi.patch.instead("CustomFields", function (props, _context, original) {
+    return React.createElement(PatchedCustomFields, {
+      original,
+      originalProps: props,
+    });
   });
 })();
