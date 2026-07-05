@@ -38,7 +38,6 @@
   .detail-header:not(.edit)
   .performer-additional-images__button.btn {
   align-items: center;
-  background: rgba(24, 26, 31, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 50%;
   bottom: -5px;
@@ -63,7 +62,6 @@
 #performer-page
   .detail-header:not(.edit)
   .performer-additional-images__button.btn:focus {
-  background: rgba(42, 46, 56, 0.95);
   border-color: rgba(255, 255, 255, 0.42);
   color: #fff;
   transform: translateY(-1px);
